@@ -7,7 +7,7 @@ import (
 	"time"
 
 	toml "github.com/BurntSushi/toml"
-	netatmo "github.com/exzz/netatmo-api-go"
+	netatmo "github.com/steinhobelgruen/netatmo-api-go"
 )
 
 // Command line flag
