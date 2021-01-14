@@ -16,7 +16,8 @@ const (
 	// DefaultAuthURL is netatmo auth url
 	authURL = baseURL + "oauth2/token"
 	// DefaultDeviceURL is netatmo device url
-	deviceURL = baseURL + "/api/getstationsdata"
+	stationURL = baseURL + "/api/getstationsdata"
+	homecoachURL = baseURL + "/api/gethomecoachsdata"
 )
 
 // Config is used to specify credential to Netatmo API
@@ -56,7 +57,7 @@ type DeviceCollection struct {
 // Type : Module type :
 //  "NAMain" : for the base station
 //  "NAModule1" : for the outdoor module
-//  "NAModule4" : for the additionnal indoor module
+//  "NAModule4" : for the additional indoor module
 //  "NAModule3" : for the rain gauge module
 //  "NAModule2" : for the wind gauge module
 // DashboardData : Data collection from device sensors
@@ -89,9 +90,10 @@ type Device struct {
 // WindStrength : Current 5 min average wind speed @ LastMeasure (in km/h)
 // GustAngle : Direction of the last 5 min highest gust wind @ LastMeasure (in °)
 // GustStrength : Speed of the last 5 min highest gust wind @ LastMeasure (in km/h)
+// FIXME health_idx
 // LastMeasure : Contains timestamp of last data received
 type DashboardData struct {
-	Temperature      *float32 `json:"Temperature,omitempty"` // use pointer to detect ommitted field by json mapping
+	Temperature      *float32 `json:"Temperature,omitempty"` // use pointer to detect omitted field by json mapping
 	Humidity         *int32   `json:"Humidity,omitempty"`
 	CO2              *int32   `json:"CO2,omitempty"`
 	Noise            *int32   `json:"Noise,omitempty"`
@@ -104,6 +106,7 @@ type DashboardData struct {
 	WindStrength     *int32   `json:"WindStrength,omitempty"`
 	GustAngle        *int32   `json:"GustAngle,omitempty"`
 	GustStrength     *int32   `json:"GustStrength,omitempty"`
+	HealthIndex      *int32   `json:"health_idx,omitempty"`
 	LastMeasure      *int64   `json:"time_utc"`
 }
 
@@ -112,7 +115,7 @@ func NewClient(config Config) (*Client, error) {
 	oauth := &oauth2.Config{
 		ClientID:     config.ClientID,
 		ClientSecret: config.ClientSecret,
-		Scopes:       []string{"read_station"},
+		Scopes:       []string{"read_station", "read_homecoach"},
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  baseURL,
 			TokenURL: authURL,
@@ -198,10 +201,17 @@ func processHTTPResponse(resp *http.Response, err error, holder interface{}) err
 
 // GetStations returns the list of stations owned by the user, and their modules
 func (c *Client) Read() (*DeviceCollection, error) {
-	resp, err := c.doHTTPGet(deviceURL, url.Values{"app_type": {"app_station"}})
+	// resp, err := c.doHTTPGet(stationURL, url.Values{"app_type": {"app_station"}})
 	//dc := &DeviceCollection{}
-
+/*
 	if err = processHTTPResponse(resp, err, c.Dc); err != nil {
+		return nil, err
+	}
+*/
+	resp2, err := c.doHTTPGet(homecoachURL, url.Values{"app_type": {"app_station"}})
+	// dc := &DeviceCollection{}
+
+	if err = processHTTPResponse(resp2, err, c.Dc); err != nil {
 		return nil, err
 	}
 
@@ -273,6 +283,9 @@ func (d *Device) Data() (int64, map[string]interface{}) {
 	}
 	if d.DashboardData.GustStrength != nil {
 		m["GustStrength"] = *d.DashboardData.GustStrength
+	}
+	if d.DashboardData.HealthIndex != nil {
+		m["HealthIndex"] = *d.DashboardData.HealthIndex
 	}
 
 	return *d.DashboardData.LastMeasure, m
